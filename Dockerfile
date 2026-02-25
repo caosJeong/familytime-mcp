@@ -9,7 +9,7 @@ RUN chmod +x ./gradlew
 RUN ./gradlew bootJar -x test
 
 # 2단계: 실행 환경
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=builder /app/build/libs/*.jar app.jar
 ENV JAVA_OPTS="-Xms256m -Xmx256m"
