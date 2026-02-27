@@ -1,42 +1,34 @@
 HELP.md
-.gradle
+.gradle/
 build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
+bin/
+out/
 
-### STS ###
-.apt_generated
+### Secrets & Configs ###
+# 비밀번호나 API 키가 포함된 모든 설정 파일 차단
+*.yml
+*.yaml
+# 단, 기본 설정 파일인 application.yaml 하나만 예외로 허용 (필요한 경우)
+!src/main/resources/application.yaml
+application-secret.yml
+.env
+secret.yml
+
+### Artifacts ###
+# 빌드 결과물인 jar, war 파일은 절대 올라가지 않도록 설정
+*.jar
+*.war
+
+### IDE ###
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
 .classpath
-.factorypath
 .project
-.settings
+.settings/
 .springBeans
 .sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-
-### VS Code ###
-.vscode/
-application-secret.yml
-src/main/resources/application-secret.yml
-src/main/resources/secret.yml
-src/main/resources/application-secret.yml
-build/
+.factorypath
+.apt_generated
