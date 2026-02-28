@@ -32,3 +32,4 @@ secret.yml
 .sts4-cache
 .factorypath
 .apt_generated
+.gradle/
