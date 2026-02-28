@@ -5,17 +5,23 @@ import java.util.List;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.converter.BeanOutputConverter;
+import org.springframework.ai.model.Media;
+import org.springframework.http.MediaType;
+import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.amber.familytime.mcp_server.domain.Ledger;
 import com.amber.familytime.mcp_server.dto.LifestyleDto.FamilyDataRequest;
 import com.amber.familytime.mcp_server.dto.LifestyleDto.PatternAnalysisResponse;
 import com.amber.familytime.mcp_server.repository.LedgerRepository;
+
 
 @RestController
 @RequestMapping("/api/ai")
@@ -103,6 +109,40 @@ public class AiAnalysisController {
 
         return outputConverter.convert(response);
     }
+
+    @PostMapping(value = "/analyze-receipt", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ReceiptAnalysisResponse analyzeReceipt(@RequestPart("file") MultipartFile file) {
+        var outputConverter = new BeanOutputConverter<>(ReceiptAnalysisResponse.class);
+
+        String promptTemplate = """
+                당신은 영수증 데이터를 정밀하게 분석하는 AI 비서입니다.
+                첨부된 영수증 이미지를 분석해서 다음 정보를 추출해주세요:
+                1. 전체 합계 금액 (totalAmount)
+                2. 마트/가게 이름 (storeName)
+                3. 거래 일시 (transactionDate, YYYY-MM-DD HH:mm:ss 형식)
+                4. 구매한 개별 품목 리스트 (items) - 각 품목의 정확한 이름(name), 수량(quantity), 결제 금액(amount)
+                
+                영수증에 노이즈가 있더라도 최대한 정확하게 품목과 가격을 매칭해야 합니다.
+                반드시 아래의 JSON 형식에 정확히 맞추어 답변해야 합니다.
+                {format}
+                """;
+
+        String systemPrompt = promptTemplate.replace("{format}", outputConverter.getFormat());
+
+        try {
+            // Spring AI 멀티모달 요청 (텍스트 프롬프트 + 이미지 파일)
+            String response = chatClient.prompt()
+                    .system(systemPrompt)
+                    .user(u -> u.text("이 영수증 이미지를 분석해서 가계부 내역으로 만들어줘.")
+                                .media(new Media(MimeTypeUtils.parseMimeType(file.getContentType()), file.getResource())))
+                    .call()
+                    .content();
+
+            return outputConverter.convert(response);
+        } catch (Exception e) {
+            throw new RuntimeException("영수증 이미지 분석 중 오류가 발생했습니다.", e);
+        }
+    }
 }
 
 // 기존 AiInsight 레코드 (변경 없음)
@@ -111,4 +151,17 @@ record AiInsight(
         List<String> financeTips,
         List<String> scheduleTips,
         String encouragement
+) {}
+
+record ReceiptItem(
+        String name,
+        Integer quantity,
+        Long amount
+) {}
+
+record ReceiptAnalysisResponse(
+        String storeName,
+        Long totalAmount,
+        String transactionDate,
+        List<ReceiptItem> items
 ) {}
