@@ -112,14 +112,10 @@ public class AiAnalysisController {
 
     @PostMapping(value = "/analyze-receipt", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ReceiptAnalysisResponse analyzeReceipt(@RequestPart("file") MultipartFile file) {
-        // 💡 1. 파일 누락 방어 로직
         if (file.isEmpty()) {
             throw new IllegalArgumentException("업로드된 파일이 없습니다.");
         }
 
-        // 💡 2. Content-Type(MIME 타입) 보정 로직 추가
-        // 플러터에서 파일 형식을 지정하지 않아 "application/octet-stream"으로 넘어오는 경우,
-        // 강제로 이미지 타입(image/jpeg 또는 image/png)으로 변환해 제미나이가 인식할 수 있게 합니다.
         String contentType = file.getContentType();
         if (contentType == null || contentType.contains("octet-stream")) {
             String filename = file.getOriginalFilename();
@@ -142,15 +138,16 @@ public class AiAnalysisController {
                 
                 영수증에 노이즈가 있더라도 최대한 정확하게 품목과 가격을 매칭해야 합니다.
                 반드시 아래의 JSON 형식에 정확히 맞추어 답변해야 합니다.
+                마크다운 코드 블록(```json 등)을 사용하지 말고, 순수한 JSON 문자열만 반환하세요.
                 {format}
                 """;
 
         String systemPrompt = promptTemplate.replace("{format}", outputConverter.getFormat());
 
         try {
-            // 💡 3. 보정된 contentType을 적용하도록 변수 수정 (file.getContentType() -> contentType)
             String finalContentType = contentType; 
 
+            // 제미나이에게 요청 보내기
             String response = chatClient.prompt()
                     .system(systemPrompt)
                     .user(u -> u.text("이 영수증 이미지를 분석해서 가계부 내역으로 만들어줘.")
@@ -158,9 +155,18 @@ public class AiAnalysisController {
                     .call()
                     .content();
 
+            // 💡 [여기가 추가된 부분입니다!] 제미나이의 원본 응답을 서버 콘솔에 출력합니다.
+            System.out.println("\n===== [Gemini AI 응답 원본] =====");
+            System.out.println(response);
+            System.out.println("=================================\n");
+
             return outputConverter.convert(response);
+            
         } catch (Exception e) {
-            throw new RuntimeException("영수증 이미지 분석 중 오류가 발생했습니다.", e);
+            // 💡 [여기가 추가된 부분입니다!] 에러가 발생한 이유를 서버 콘솔에 자세히 출력합니다.
+            System.err.println("\n🚨 [에러 발생] 영수증 분석 중 문제가 발생했습니다!");
+            e.printStackTrace(); 
+            throw new RuntimeException("영수증 이미지 분석 중 오류가 발생했습니다: " + e.getMessage(), e);
         }
     }
 }
