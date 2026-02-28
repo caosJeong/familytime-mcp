@@ -7,6 +7,12 @@ spring:
 
   main:
     web-application-type: servlet
+    
+  # 💡 추가된 부분: 사진(영수증) 업로드 용량을 10MB로 넉넉하게 늘려줍니다.
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
   
   # 💡 추가된 부분: Render에서 주입받을 DB 환경 변수 세팅
   datasource:
@@ -31,4 +37,3 @@ spring:
       chat:
         options:
           model: gemini-2.5-flash
-          
