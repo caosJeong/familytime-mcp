@@ -112,6 +112,24 @@ public class AiAnalysisController {
 
     @PostMapping(value = "/analyze-receipt", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ReceiptAnalysisResponse analyzeReceipt(@RequestPart("file") MultipartFile file) {
+        // 💡 1. 파일 누락 방어 로직
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("업로드된 파일이 없습니다.");
+        }
+
+        // 💡 2. Content-Type(MIME 타입) 보정 로직 추가
+        // 플러터에서 파일 형식을 지정하지 않아 "application/octet-stream"으로 넘어오는 경우,
+        // 강제로 이미지 타입(image/jpeg 또는 image/png)으로 변환해 제미나이가 인식할 수 있게 합니다.
+        String contentType = file.getContentType();
+        if (contentType == null || contentType.contains("octet-stream")) {
+            String filename = file.getOriginalFilename();
+            if (filename != null && filename.toLowerCase().endsWith(".png")) {
+                contentType = "image/png";
+            } else {
+                contentType = "image/jpeg";
+            }
+        }
+
         var outputConverter = new BeanOutputConverter<>(ReceiptAnalysisResponse.class);
 
         String promptTemplate = """
@@ -130,11 +148,13 @@ public class AiAnalysisController {
         String systemPrompt = promptTemplate.replace("{format}", outputConverter.getFormat());
 
         try {
-            // Spring AI 멀티모달 요청 (텍스트 프롬프트 + 이미지 파일)
+            // 💡 3. 보정된 contentType을 적용하도록 변수 수정 (file.getContentType() -> contentType)
+            String finalContentType = contentType; 
+
             String response = chatClient.prompt()
                     .system(systemPrompt)
                     .user(u -> u.text("이 영수증 이미지를 분석해서 가계부 내역으로 만들어줘.")
-                                .media(new Media(MimeTypeUtils.parseMimeType(file.getContentType()), file.getResource())))
+                                .media(new Media(MimeTypeUtils.parseMimeType(finalContentType), file.getResource())))
                     .call()
                     .content();
 
